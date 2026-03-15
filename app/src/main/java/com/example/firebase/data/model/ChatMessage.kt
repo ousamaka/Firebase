@@ -1,8 +1,7 @@
 package com.example.firebase.data.model
 
 data class ChatMessage(
-    val id: String = "",
-    val sender: String = "Usuario",
+    val sender: String = "",
     val text: String = "",
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = 0L
 )

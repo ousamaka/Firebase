@@ -20,15 +20,26 @@ fun NavigationWrapper(navHostController: NavHostController, auth: FirebaseAuth, 
         composable("Initial") {
             InitialScreen(
                 navigateToLogin = { navHostController.navigate("Login") },
-                navigateToSignUp = { navHostController.navigate("Signup") }
+                navigateToSignUp = { navHostController.navigate("Signup") },
+                navigateToHome = {
+                    homeViewModel.loadFavorites()
+                    navHostController.navigate("home") { popUpTo("Initial") { inclusive = true } }
+                }
             )
         }
         composable("Login") {
-            LoginScreen(auth = auth, navigateToHome = { navHostController.navigate("home") })
+            LoginScreen(
+                auth = auth,
+                navigateToHome = {
+                    homeViewModel.loadFavorites()
+                    navHostController.navigate("home") {
+                        popUpTo("Login") { inclusive = true }
+                        popUpTo("Initial") { inclusive = true }
+                    }
+                }
+            )
         }
-        composable("Signup") {
-            SignupScreen(auth = auth)
-        }
+        composable("Signup") { SignupScreen(auth = auth) }
         composable("home") {
             HomeScreen(
                 viewModel = homeViewModel,
@@ -37,7 +48,16 @@ fun NavigationWrapper(navHostController: NavHostController, auth: FirebaseAuth, 
                 navigateToMap = { navHostController.navigate("map") }
             )
         }
-        composable("profile") { ProfileScreen(onBack = { navHostController.popBackStack() }) }
+        composable("profile") {
+            ProfileScreen(
+                onBack = { navHostController.popBackStack() },
+                homeViewModel = homeViewModel,
+                // NUEVO: Lógica para cerrar sesión y volver al inicio
+                onLogout = {
+                    navHostController.navigate("Initial") { popUpTo(0) }
+                }
+            )
+        }
         composable("chat") { ChatScreen(onBack = { navHostController.popBackStack() }) }
         composable("map") { MapScreen(onBack = { navHostController.popBackStack() }, homeViewModel = homeViewModel) }
     }

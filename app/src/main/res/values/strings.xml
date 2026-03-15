@@ -13,4 +13,13 @@
     <string name="favorites_section">Mis Canciones Favoritas ⭐</string>
     <string name="no_favorites">Aún no tienes favoritos</string>
     <string name="back">Volver</string>
+    <string name="logout">Cerrar Sesión</string>
+    <string name="millions_songs">Millones de canciones.</string>
+    <string name="free_spotify">Gratis en SoundConnect</string>
+    <string name="sign_up_free">Regístrate gratis</string>
+    <string name="continue_google">Continuar con Google</string>
+    <string name="continue_facebook">Continuar con Facebook</string>
+    <string name="log_in">Iniciar Sesión</string>
+
+    <string name="default_web_client_id">749829103332-5jq4365mdind82bptll9aq42iaobmtal.apps.googleusercontent.com</string>
 </resources>

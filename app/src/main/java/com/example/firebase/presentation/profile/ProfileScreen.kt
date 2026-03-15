@@ -30,6 +30,7 @@ import com.example.firebase.presentation.homescreen.HomeViewmodel
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
+    onLogout: () -> Unit = {},
     viewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
     homeViewModel: HomeViewmodel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
@@ -59,13 +60,22 @@ fun ProfileScreen(
         modifier = Modifier.fillMaxSize().systemBarsPadding().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Button(onClick = onBack) { Text(stringResource(R.string.back)) }
+            Button(
+                onClick = {
+                    viewModel.logout()
+                    onLogout()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text(stringResource(R.string.logout), color = Color.White)
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = stringResource(R.string.profile_title), style = MaterialTheme.typography.headlineLarge)
-        
+
         Spacer(modifier = Modifier.height(16.dp))
         Box(
             modifier = Modifier.size(120.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
@@ -90,11 +100,11 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(24.dp))
         HorizontalDivider()
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(text = stringResource(R.string.favorites_section), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         if (favorites.isEmpty()) {
             Text(stringResource(R.string.no_favorites), style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
         } else {

@@ -1,50 +1,42 @@
 package com.example.firebase.presentation.chat
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.example.firebase.data.model.ChatMessage
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class ChatViewModel : ViewModel() {
-
     private val db = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages
 
     init {
-        loadMessages()
-    }
-
-    // Escuchar la base de datos en Tiempo Real (Pide el profesor en RA2)
-    private fun loadMessages() {
-        db.collection("chat")
+        // Leemos de la base de datos de Firebase en tiempo real
+        db.collection("chat_messages")
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("ChatViewModel", "Error escuchando chat", error)
-                    return@addSnapshotListener
-                }
+                if (error != null) return@addSnapshotListener
                 if (snapshot != null) {
-                    val chatList = snapshot.documents.mapNotNull { it.toObject(ChatMessage::class.java) }
-                    _messages.value = chatList
+                    val msgList = snapshot.documents.mapNotNull { it.toObject(ChatMessage::class.java) }
+                    _messages.value = msgList
                 }
             }
     }
 
-    // Enviar un mensaje a la nube
-    fun sendMessage(text: String, senderName: String = "Usuario Anónimo") {
+    fun sendMessage(text: String) {
         if (text.isBlank()) return
-
+        val email = auth.currentUser?.email ?: "Usuario Local"
         val message = ChatMessage(
-            id = db.collection("chat").document().id,
-            sender = senderName,
+            sender = email,
             text = text,
             timestamp = System.currentTimeMillis()
         )
-        db.collection("chat").document(message.id).set(message)
+        // Guardamos en la nube para que no se borre al cerrar la app
+        db.collection("chat_messages").add(message)
     }
 }

@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">SoundConnect</string>
+    <string name="welcome_title">SoundConnect</string>
+    <string name="shake_to_recommend">Shake to discover music</string>
+    <string name="search_placeholder">Search artist or song...</string>
+    <string name="btn_search">Search</string>
+    <string name="btn_profile">Profile 👤</string>
+    <string name="btn_chat">Chat 💬</string>
+    <string name="btn_map">Map 🗺️</string>
+    <string name="profile_title">My Profile</string>
+    <string name="take_photo">Take photo with Camera 📸</string>
+    <string name="choose_gallery">Choose from Gallery 🖼️</string>
+    <string name="favorites_section">My Favorite Songs ⭐</string>
+    <string name="no_favorites">You have no favorites yet</string>
+    <string name="back">Back</string>
+    <string name="logout">Log Out</string>
+    <string name="millions_songs">Millions of songs.</string>
+    <string name="free_spotify">Free on SoundConnect</string>
+    <string name="sign_up_free">Sign up free</string>
+    <string name="continue_google">Continue with Google</string>
+    <string name="continue_facebook">Continue with Facebook</string>
+    <string name="log_in">Log In</string>
+
+    <string name="default_web_client_id">749829103332-5jq4365mdind82bptll9aq42iaobmtal.apps.googleusercontent.com</string>
+</resources>
