@@ -1,127 +1,107 @@
 package com.example.firebase.presentation.homescreen
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.firebase.R
-import com.example.firebase.data.model.Artist
-import com.example.firebase.data.model.Player
-import com.example.firebase.ui.theme.Black
-import com.example.firebase.ui.theme.Purple40
+import com.example.firebase.data.model.Song
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewmodel: HomeViewmodel = HomeViewmodel()) {
+fun HomeScreen(
+    viewModel: HomeViewmodel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    navigateToProfile: () -> Unit,
+    navigateToChat: () -> Unit,
+    navigateToMap: () -> Unit
+) {
+    val songs by viewModel.songs.collectAsState()
+    val currentlyPlayingUrl by viewModel.currentlyPlayingUrl.collectAsState()
+    val favoriteIds by viewModel.favoriteIds.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
-    val artists: State<List<Artist>> = viewmodel.artist.collectAsState()
-    val player: Player? by viewmodel.player.collectAsState()
+    val sensorManager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
+    val accelerometer = remember { sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(Black)
-    ) {
-        Text(
-            "Popular artist",
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 30.sp,
-            modifier = Modifier.padding(16.dp)
-        )
-        LazyRow {
-            items(artists.value) {
-                ArtistItem(artist = it,{viewmodel.addPlayer(it)})
+    DisposableEffect(Unit) {
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                val x = event.values[0]; val y = event.values[1]; val z = event.values[2]
+                val speed = Math.abs(x + y + z)
+                if (speed > 30) viewModel.recommendRandom()
+            }
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        }
+        sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+        onDispose { sensorManager.unregisterListener(listener) }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("SoundConnect", fontWeight = FontWeight.Bold) },
+                actions = {
+                    IconButton(onClick = navigateToMap) { Icon(Icons.Filled.Map, null) }
+                    IconButton(onClick = navigateToChat) { Icon(Icons.Filled.Chat, null) }
+                    IconButton(onClick = navigateToProfile) { Icon(Icons.Filled.Person, null) }
+                }
+            )
+        }
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding).padding(16.dp)) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Buscar...") },
+                trailingIcon = { IconButton(onClick = { viewModel.searchMusic(searchQuery) }) { Icon(Icons.Filled.Search, null) } }
+            )
+            if (isLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(songs) { song ->
+                    val isFav = favoriteIds.contains(song.trackId.toString())
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable { 
+                            song.previewUrl?.let { viewModel.playAudio(it) } 
+                        },
+                        colors = CardDefaults.cardColors(containerColor = if (currentlyPlayingUrl == song.previewUrl) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)
+                    ) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            AsyncImage(
+                                model = song.artworkUrl, // Corregido de .artwork a .artworkUrl
+                                contentDescription = null, 
+                                modifier = Modifier.size(50.dp).clip(RoundedCornerShape(8.dp))
+                            )
+                            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                                Text(text = song.trackName, fontWeight = FontWeight.Bold)
+                                Text(text = song.artistName, style = MaterialTheme.typography.bodySmall)
+                            }
+                            IconButton(onClick = { viewModel.toggleFavorite(song.trackId.toString()) }) {
+                                Icon(if (isFav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, null, tint = if (isFav) Color.Red else Color.Gray)
+                            }
+                        }
+                    }
+                }
             }
         }
-        Spacer(modifier = Modifier.weight(1f))
-        player?.let{PlayerComponent(it, {viewmodel.onPlaySelected()}, {viewmodel.onCancelSelected()})}
     }
 }
-
-@Composable
-fun PlayerComponent(player: Player, onPlaySelected: () -> Unit, onCancelSelected: () -> Unit) {
-
-    val icon = if (player.play == true) R.drawable.ic_pause else R.drawable.ic_play
-
-    Row(
-        Modifier
-            .height(50.dp)
-            .fillMaxWidth()
-            .background(Purple40),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = player.artist?.name.orEmpty(),
-            modifier = Modifier.padding(horizontal = 12.dp),
-            color = Color.White
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        Image(painter = painterResource(id = icon),
-            contentDescription = "play/pause",
-            modifier = Modifier
-                .size(40.dp)
-                .clickable { onPlaySelected() })
-        Image(painter = painterResource(id = R.drawable.ic_close),
-            contentDescription = "Close",
-            modifier = Modifier
-                .size(40.dp)
-                .clickable { onCancelSelected() })
-    }
-}
-
-@Composable
-fun ArtistItem(artist: Artist, onItemSelected:()->Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable{onItemSelected()}) {
-        AsyncImage(
-            modifier = Modifier
-                .size(60.dp)
-                .clip(CircleShape),
-            model = artist.image,
-            contentDescription = "Artists image",
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = artist.name.orEmpty(), color = Color.White)
-    }
-}
-
-//@Preview
-//@Composable
-//fun ArtistItemPreview() {
-//    val artist = Artist(
-//        "Pepe",
-//        "El mejor",
-//        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwyXeKDN29AmZgZPLS7n0Bepe8QmVappBwZCeA3XWEbWNdiDFB",
-//        //emptyList()
-//    )
-//    ArtistItem(artist = artist)
-//}
-
-

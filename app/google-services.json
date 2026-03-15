@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "749829103332",
+    "firebase_url": "https://fir-641fd-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "fir-641fd",
+    "storage_bucket": "fir-641fd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:749829103332:android:d4e113c47bba7990c156f1",
+        "android_client_info": {
+          "package_name": "com.example.firebase"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCp9p_TwOZdihXS8KAmDSX4gGg9BFuU2kU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,3 +1,16 @@
 <resources>
-    <string name="app_name">Firebase</string>
+    <string name="app_name">SoundConnect</string>
+    <string name="welcome_title">SoundConnect</string>
+    <string name="shake_to_recommend">Agita para descubrir música</string>
+    <string name="search_placeholder">Buscar artista o canción...</string>
+    <string name="btn_search">Buscar</string>
+    <string name="btn_profile">Perfil 👤</string>
+    <string name="btn_chat">Chat 💬</string>
+    <string name="btn_map">Mapa 🗺️</string>
+    <string name="profile_title">Mi Perfil</string>
+    <string name="take_photo">Tomar foto con Cámara 📸</string>
+    <string name="choose_gallery">Elegir de la Galería 🖼️</string>
+    <string name="favorites_section">Mis Canciones Favoritas ⭐</string>
+    <string name="no_favorites">Aún no tienes favoritos</string>
+    <string name="back">Volver</string>
 </resources>

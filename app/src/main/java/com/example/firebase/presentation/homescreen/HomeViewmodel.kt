@@ -1,120 +1,106 @@
 package com.example.firebase.presentation.homescreen
 
-import android.util.Log
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.MediaPlayer
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.firebase.data.model.Artist
-import com.example.firebase.data.model.Player
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.ktx.database
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
+import com.example.firebase.data.model.Song
+import com.example.firebase.network.RetrofitInstance
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.compose
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withContext
 
-class HomeViewmodel : ViewModel() {
-    private var db: FirebaseFirestore = Firebase.firestore
+class HomeViewmodel(application: Application) : AndroidViewModel(application) {
 
-    private var database: FirebaseDatabase = Firebase.database
+    private val auth = FirebaseAuth.getInstance()
+    
+    private val _songs = MutableStateFlow<List<Song>>(emptyList())
+    val songs: StateFlow<List<Song>> = _songs
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
 
-    private val _artist = MutableStateFlow<List<Artist>>(emptyList())
-    val artist: StateFlow<List<Artist>> = _artist
+    private val _currentlyPlayingUrl = MutableStateFlow<String?>(null)
+    val currentlyPlayingUrl: StateFlow<String?> = _currentlyPlayingUrl
 
-    private val _player = MutableStateFlow<Player?>(null)
-    val player: StateFlow<Player?> = _player
+    private val _favoriteIds = MutableStateFlow<Set<String>>(emptySet())
+    val favoriteIds: StateFlow<Set<String>> = _favoriteIds
 
+    private var mediaPlayer: MediaPlayer? = null
+    
+    // Usamos un nombre de archivo que incluya el UID para que sea independiente por usuario
+    private fun getPrefsName(): String {
+        val uid = auth.currentUser?.uid ?: "guest"
+        return "music_prefs_$uid"
+    }
 
     init {
-        getArtists()
-//        repeat(20){
-//            loadData()
-//        }
-        getPlayer()
-    }
-//    private fun loadData(){
-//        val random = (1..10000).random()
-//        val artist = Artist("Random $random", description = "Descripción random núemro $random", image = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwyXeKDN29AmZgZPLS7n0Bepe8QmVappBwZCeA3XWEbWNdiDFB")
-//
-//        db.collection("artists").add(artist)
-//    }
-
-    private fun collectPlayer(): Flow<DataSnapshot> = callbackFlow {
-        val listener = object: ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                trySend(snapshot).isSuccess
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.i("Ignacio","Error: ${error.message}")
-                close(error.toException())
-            }
-        }
-
-        val ref = database.reference.child("player")
-        ref.addValueEventListener(listener)
-
-        awaitClose { ref.removeEventListener(listener) }
-
+        loadFavorites()
+        searchMusic("Pop")
     }
 
-    private fun getPlayer(){
+    fun loadFavorites() {
+        val sharedPrefs = getApplication<Application>().getSharedPreferences(getPrefsName(), Context.MODE_PRIVATE)
+        val favs = sharedPrefs.getStringSet("favorites", emptySet()) ?: emptySet()
+        _favoriteIds.value = favs
+    }
+
+    fun toggleFavorite(trackId: String) {
+        val sharedPrefs = getApplication<Application>().getSharedPreferences(getPrefsName(), Context.MODE_PRIVATE)
+        val currentFavs = _favoriteIds.value.toMutableSet()
+        if (currentFavs.contains(trackId)) currentFavs.remove(trackId)
+        else currentFavs.add(trackId)
+        _favoriteIds.value = currentFavs
+        sharedPrefs.edit().putStringSet("favorites", currentFavs).apply()
+    }
+
+    fun searchMusic(query: String) {
+        if (query.isBlank()) return
         viewModelScope.launch {
-            collectPlayer().collect {
-                val player = it.getValue(Player::class.java)
-                _player.value = player
+            _isLoading.value = true
+            try {
+                val response = RetrofitInstance.api.searchSongs(query)
+                _songs.value = response.results
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isLoading.value = false
             }
         }
-
     }
-    private fun getArtists() {
-        viewModelScope.launch {
-            val result: List<Artist> = withContext(Dispatchers.IO) {
-                getAllArtists()
+
+    fun recommendRandom() {
+        searchMusic(listOf("Rock", "Techno", "Pop", "Jazz").random())
+    }
+
+    fun playAudio(url: String?) {
+        if (url == null) return
+        if (_currentlyPlayingUrl.value == url) {
+            mediaPlayer?.stop()
+            _currentlyPlayingUrl.value = null
+            return
+        }
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = MediaPlayer().apply {
+            setAudioAttributes(AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build())
+            setDataSource(url)
+            prepareAsync()
+            setOnPreparedListener {
+                start()
+                _currentlyPlayingUrl.value = url
             }
-            _artist.value = result
+            setOnCompletionListener { _currentlyPlayingUrl.value = null }
         }
     }
 
-    private suspend fun getAllArtists(): List<Artist> {
-        return try {
-            db.collection("artists").get().await().documents.mapNotNull { snapshot ->
-                snapshot.toObject(Artist::class.java)
-            }
-        } catch (e: Exception) {
-            Log.i("aris", e.toString())
-            emptyList()
-        }
-    }
-
-    fun onPlaySelected() {
-        if(player.value!= null){
-            val currentPlayer = _player.value?.copy(play = !player.value?.play!!)
-            val ref = database.reference.child("player")
-            ref.setValue(currentPlayer)
-        }
-    }
-
-    fun onCancelSelected(){
-        val ref = database.reference.child("player")
-        ref.setValue(null)
-    }
-
-    fun addPlayer(artist: Artist) {
-        val ref = database.reference.child("player")
-        val player = Player(artist,play=true)
-        ref.setValue(player)
+    override fun onCleared() {
+        super.onCleared()
+        mediaPlayer?.release()
     }
 }
